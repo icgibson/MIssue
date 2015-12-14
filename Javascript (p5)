@@ -1,0 +1,396 @@
+var serial;
+var portName = '/dev/cu.AdafruitEZ-Link71f3-SPP';
+
+var river; //vars to hold audio files
+var identity;
+var collMurder;
+var sharkAtk;
+var firefight;
+var seeWar;
+
+var riverVol = 0; //vars to hold volumes
+var identityVol = 0;
+var collMurderVol = 0;
+var sharkAtkVol = 0;
+var firefightVol = 0;
+var seeWarVol = 0;
+
+var boot = 0; //vars to hold photocell values
+var tape = 0;
+var ace = 0;
+var contract = 0;
+var wipes = 0;
+var dogTags = 0;
+
+var bootThresh = 950; //vars to account for ambient light
+var tapeThresh = 950;
+var aceThresh = 950;
+var contractThresh = 950;
+var wipesThresh = 950;
+var dogTagsThresh = 950;
+
+var bootSlider; //sliders to control thresholds
+var tapeSlider;
+var aceSlider;
+var contractSlider;
+var wipesSlider;
+var dogTagsSlider;
+
+var bootCushion = 30; //vars to create fades appropriate to object sizes
+var tapeCushion = 100;
+var aceCushion = 100;
+var contractCushion = 40;
+var wipesCushion = 85;
+var dogTagsCushion = 120;
+
+var bootP; //buttons to allow for manual fine-tuning of thresholds
+var bootM;
+var tapeP;
+var tapeM;
+var aceP;
+var aceM;
+var contractP;
+var contractM;
+var wipesP;
+var wipesM;
+var dogTagsP;
+var dogTagsM;
+
+var bootS = 0;
+var tapeS = 0;
+var aceS = 0;
+var contractS = 0;
+var wipesS = 0;
+var dogTagsS = 0;
+
+var bootPressed = 0;
+var tapePressed = 0;
+var acePressed = 0;
+var contractPressed = 0;
+var wipesPressed = 0;
+var dogTagsPressed = 0;
+
+var reset; //var to hold switch value
+
+function preload() {
+  river = loadSound('audio/river.mp3');
+  identity = loadSound('audio/identity.mp3');
+  collMurder = loadSound('audio/collmurder.mp3');
+  sharkAtk = loadSound('audio/sharkatk.mp3');
+  firefight = loadSound('audio/firefight.mp3');
+  seeWar = loadSound('audio/seewar.mp3');
+}
+
+function setup() {
+  createCanvas(windowWidth,windowHeight);
+  
+  serial = new p5.SerialPort();
+  serial.on('data', serialEvent);
+  serial.on('error', serialError);
+  serial.open(portName);
+  
+  //CREATE AND FORMAT SLIDERS
+  bootSlider = createSlider(0,950,950);
+  tapeSlider = createSlider(0,950,950);
+  aceSlider = createSlider(0,950,950);
+  contractSlider = createSlider(0,950,950);
+  wipesSlider = createSlider(0,950,950);
+  dogTagsSlider = createSlider(0,950,950);
+  
+  formatSlider(bootSlider,10);
+  formatSlider(tapeSlider,50);
+  formatSlider(aceSlider,90);
+  formatSlider(contractSlider,130);
+  formatSlider(wipesSlider,170);
+  formatSlider(dogTagsSlider,210);
+  
+  //CREATE BUTTONS TO FINE-TUNE THRESHOLDS
+  bootP = createButton('+10');
+  bootM = createButton('-10');
+  tapeP = createButton('+10');
+  tapeM = createButton('-10');
+  aceP = createButton('+10');
+  aceM = createButton('-10');
+  contractP = createButton('+10');
+  contractM = createButton('-10');
+  wipesP = createButton('+10');
+  wipesM = createButton('-10');
+  dogTagsP = createButton('+10');
+  dogTagsM = createButton('-10');
+  
+  bootP.position(8,23);
+  bootM.position(50,23);
+  tapeP.position(8,63);
+  tapeM.position(50,63);
+  aceP.position(8,103);
+  aceM.position(50,103);
+  contractP.position(8,143);
+  contractM.position(50,143);
+  wipesP.position(8,183);
+  wipesM.position(50,183);
+  dogTagsP.position(8,223);
+  dogTagsM.position(50,223);
+  
+  bootP.mousePressed(bootPlus);
+  bootM.mousePressed(bootMinus);
+  tapeP.mousePressed(tapePlus);
+  tapeM.mousePressed(tapeMinus);
+  aceP.mousePressed(acePlus);
+  aceM.mousePressed(aceMinus);
+  contractP.mousePressed(contractPlus);
+  contractM.mousePressed(contractMinus);
+  wipesP.mousePressed(wipesPlus);
+  wipesM.mousePressed(wipesMinus);
+  dogTagsP.mousePressed(dogTagsPlus);
+  dogTagsM.mousePressed(dogTagsMinus);
+}
+
+function draw() {
+  background(255);
+  text('boot: ' +bootSlider.value(),width - 80,35);
+  text('tape: ' +tapeSlider.value(),width - 130,75);
+  text('ace: ' +aceSlider.value(),width - 130,115);
+  text('contract: ' +contractSlider.value(),width - 130,155);
+  text('wipes: ' +wipesSlider.value(),width - 130,195);
+  text('dog tags: ' +dogTagsSlider.value(),width - 130,235);
+  
+  if(bootS == 0){
+    bootThresh = bootSlider.value();
+  }
+  if(tapeS == 0){
+    tapeThresh = tapeSlider.value();
+  }
+  if(aceS == 0){
+    aceThresh = aceSlider.value();
+  }
+  if(contractS == 0){
+    contractThresh = contractSlider.value();
+  }
+  if(wipesS == 0){
+    wipesThresh = wipesSlider.value();
+  }
+  if(dogTagsS == 0){
+    dogTagsThresh = dogTagsSlider.value();
+  }
+  
+  if(bootS == 0) {
+    if(river.isPlaying() == false) {
+      bootSlider.value(bootSlider.value() - 1);
+    } else if (river.isPlaying() == true) {
+      bootSlider.value(bootSlider.value() + 1);
+      bootSet();
+    }
+  }
+
+  if(tapeS == 0) {
+    if(identity.isPlaying() == false) {
+      tapeSlider.value(tapeSlider.value() - 1);
+    } else if(identity.isPlaying() == true) {
+      tapeSlider.value(tapeSlider.value() + 1);
+      tapeSet();
+    }
+  }  
+  
+  if(aceS == 0) {
+    if(collMurder.isPlaying() == false) {
+      aceSlider.value(aceSlider.value() - 1);
+    } else if(collMurder.isPlaying() == true) {
+      aceSlider.value(aceSlider.value() + 1);
+      aceSet();
+    }
+  }  
+
+  if(contractS == 0) {
+    if(sharkAtk.isPlaying() == false) {
+      contractSlider.value(contractSlider.value() - 1);
+    } else if(sharkAtk.isPlaying() == true) {
+      contractSlider.value(contractSlider.value() + 1);
+      contractSet();
+    }
+  }  
+
+  if(wipesS == 0) {
+    if(seeWar.isPlaying() == false) {
+      wipesSlider.value(wipesSlider.value() - 1);
+    } else if(seeWar.isPlaying() == true) {
+      wipesSlider.value(wipesSlider.value() + 1);
+      wipesSet();
+    }
+  } 
+  
+  if(dogTagsS == 0) {
+    if(firefight.isPlaying() == false) {
+      dogTagsSlider.value(dogTagsSlider.value() - 1);
+    } else if(firefight.isPlaying() == true) {
+      dogTagsSlider.value(dogTagsSlider.value() + 1);
+      dogTagsSet();
+    }
+  } 
+}
+
+function serialEvent() {
+  var inString = serial.readStringUntil('\r\n');
+  
+  if (inString.length > 0 ) {
+    var sensors = split(inString, ',');
+    if (sensors.length > 5) {
+      boot = sensors[0];
+      tape = sensors[1];
+      ace = sensors[2];
+      contract = sensors[3];
+      wipes = sensors[4];
+      dogTags = sensors[5];
+      reset = sensors[6];
+      
+      if(boot > bootThresh && river.isPlaying() === false) {
+        river.play();
+      } else if (boot <= bootThresh && river.isPlaying() === true) {
+          river.pause();
+      } else if (river.isPlaying() === true) {
+          riverVol = map(boot,bootThresh,850,0,1);
+          river.setVolume(riverVol);
+      }
+      if(tape > tapeThresh && identity.isPlaying() === false) {
+        identity.play();
+      } else if (tape <= tapeThresh && identity.isPlaying() === true) {
+          identity.pause();
+      } else if (identity.isPlaying() === true) {
+          identityVol = map(tape,tapeThresh,850,0,1);
+          identity.setVolume(identityVol);
+      }
+      if(ace > aceThresh && collMurder.isPlaying() === false) {
+        collMurder.play();
+      } else if (ace <= aceThresh && collMurder.isPlaying() === true) {
+          collMurder.pause();
+      } else if (collMurder.isPlaying() === true) {
+          collMurderVol = map(ace,aceThresh,850,0,1);
+          collMurder.setVolume(collMurderVol);
+      }
+      if(contract > contractThresh && sharkAtk.isPlaying() === false) {
+        sharkAtk.play();
+      } else if (contract <= contractThresh && sharkAtk.isPlaying() === true) {
+          sharkAtk.pause();
+      } else if (sharkAtk.isPlaying() === true) {
+          sharkAtkVol = map(contract,contractThresh,850,0,1);
+          sharkAtk.setVolume(sharkAtkVol);
+      }
+      if(wipes > wipesThresh && seeWar.isPlaying() === false) {
+        seeWar.play();
+      } else if (wipes <= wipesThresh && seeWar.isPlaying() === true) {
+          seeWar.pause();
+      } else if (seeWar.isPlaying() === true) {
+          seeWarVol = map(wipes,wipesThresh,850,0,1);
+          seeWar.setVolume(seeWarVol);
+      }
+      if(dogTags > dogTagsThresh && firefight.isPlaying() === false) {
+        firefight.play();
+      } else if (dogTags <= dogTagsThresh && firefight.isPlaying() === true) {
+          firefight.pause();
+      } else if (firefight.isPlaying() === true) {
+          firefightVol = map(dogTags,dogTagsThresh,850,0,1);
+          firefight.setVolume(firefightVol);
+      }
+      if (reset == 1) {
+        river.stop();
+        identity.stop();
+        collMurder.stop();
+        sharkAtk.stop();
+        firefight.stop();
+        seeWar.stop();
+  }
+      }
+    serial.write('x');
+  }
+}
+
+function formatSlider(_b,_y) {
+  this.b = _b;
+  this.x = 100;
+  this.y = _y;
+  this.w = width - 200;
+  this.h = 40;
+  this.b.position(this.x,this.y);
+  this.b.size(this.w,this.h);
+}
+
+function bootSet() {
+  bootThresh = bootSlider.value() + bootCushion;
+  bootS = 1;
+}
+
+function bootPlus() {
+  bootThresh = bootThresh + 10;
+}
+
+function bootMinus() {
+  bootThresh = bootThresh - 10;
+}
+
+function tapeSet() {
+  tapeThresh = tapeSlider.value() + tapeCushion;
+  tapeS = 1;
+}
+
+function tapePlus() {
+  tapeThresh = tapeThresh + 10;
+}
+
+function tapeMinus() {
+  tapeThresh = tapeThresh - 10;
+}
+
+function aceSet() {
+  aceThresh = aceSlider.value() + aceCushion;
+  aceS = 1;
+}
+
+function acePlus() {
+  aceThresh = aceThresh + 10;
+}
+
+function aceMinus() {
+  aceThresh = aceThresh - 10;
+}
+
+function contractSet() {
+  contractThresh = contractSlider.value() + contractCushion;
+  contractS = 1;
+}
+
+function contractPlus() {
+  contractThresh = contractThresh + 10;
+}
+
+function contractMinus() {
+  contractThresh = contractThresh - 10;
+}
+
+function wipesSet() {
+  wipesThresh = wipesSlider.value() + wipesCushion;
+  wipesS = 1;
+}
+
+function wipesPlus() {
+  wipesThresh = wipesThresh + 10;
+}
+
+function wipesMinus() {
+  wipesThresh = wipesThresh - 10;
+}
+
+function dogTagsSet() {
+  dogTagsThresh = dogTagsSlider.value() + dogTagsCushion;
+  dogTagsS = 1;
+}
+
+function dogTagsPlus() {
+  dogTagsThresh = dogTagsThresh + 10;
+}
+
+function dogTagsMinus() {
+  dogTagsThresh = dogTagsThresh - 10;
+}
+
+function serialError(err) {
+  println('Something went wrong with the serial port. ' + err);
+}
