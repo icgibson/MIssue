@@ -1,0 +1,43 @@
+int bootVal = 0;
+int tapeVal = 0;
+int tagVal = 0;
+int contVal = 0;
+int wipeVal = 0;
+int cardVal = 0;
+int sPin = 2;
+int sVal = 0;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(sPin,INPUT);
+   while (Serial.available() <= 0) {
+    Serial.println("hello");
+    delay(500);
+  }
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    sVal = digitalRead(sPin);
+    bootVal = analogRead(A0);
+    tapeVal = analogRead(A1);
+    cardVal = analogRead(A2);
+    contVal = analogRead(A3);
+    wipeVal = analogRead(A4);
+    tagVal = analogRead(A5);
+    
+    Serial.print(bootVal);
+    Serial.print(',');
+    Serial.print(tapeVal);
+    Serial.print(',');
+    Serial.print(cardVal);
+    Serial.print(',');
+    Serial.print(contVal);
+    Serial.print(',');
+    Serial.print(wipeVal);
+    Serial.print(',');
+    Serial.print(tagVal);
+    Serial.print(',');
+    Serial.println(sVal);
+  }
+}
